@@ -1,0 +1,52 @@
+name: classhub
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: classhub
+      POSTGRES_PASSWORD: classhub
+      POSTGRES_DB: classhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - classhub_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U classhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: classhub
+      MINIO_ROOT_PASSWORD: classhub-secret
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - classhub_minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 classhub classhub-secret &&
+      mc mb --ignore-existing local/classhub
+      "
+
+volumes:
+  classhub_postgres_data:
+  classhub_minio_data:
