@@ -10,6 +10,22 @@ import { z } from "zod";
  * own server code re-checks its own required vars before doing anything
  * with them (see lib/storage, lib/ai once they exist).
  */
+
+// `.env` commonly leaves not-yet-needed vars present but empty (e.g.
+// `ANTHROPIC_API_KEY=`) rather than omitted — Next.js loads that as `""`,
+// which zod's `.optional()` does NOT treat as "absent". Coerce "" to
+// undefined first so these are genuinely optional either way.
+const optionalString = () =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional(),
+  );
+const optionalUrl = () =>
+  z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().url().optional(),
+  );
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -25,14 +41,14 @@ const envSchema = z.object({
 
   NEXT_PUBLIC_APP_URL: z.string().url("NEXT_PUBLIC_APP_URL must be a valid URL"),
 
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: optionalString(),
   ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-5"),
   AI_MONTHLY_BUDGET_EUR: z.coerce.number().positive().default(5),
 
-  STORAGE_ENDPOINT: z.string().url().optional(),
+  STORAGE_ENDPOINT: optionalUrl(),
   STORAGE_REGION: z.string().min(1).default("us-east-1"),
-  STORAGE_ACCESS_KEY: z.string().min(1).optional(),
-  STORAGE_SECRET_KEY: z.string().min(1).optional(),
+  STORAGE_ACCESS_KEY: optionalString(),
+  STORAGE_SECRET_KEY: optionalString(),
   STORAGE_BUCKET: z.string().min(1).default("classhub"),
   STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
 });
