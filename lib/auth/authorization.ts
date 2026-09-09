@@ -83,3 +83,21 @@ export async function requireClassMember(classId: string): Promise<SessionUser> 
   }
   return user;
 }
+
+/** Server Components: redirects instead of throwing. */
+export async function requireClassMemberOrRedirect(
+  classId: string,
+): Promise<SessionUser> {
+  const user = await requireUserOrRedirect();
+  if (user.role === "SYSTEM_ADMIN") {
+    return user;
+  }
+  const membership = await db.classMembership.findFirst({
+    where: { userId: user.id, classId, leftAt: null },
+    select: { id: true },
+  });
+  if (!membership) {
+    redirect("/klasse");
+  }
+  return user;
+}
