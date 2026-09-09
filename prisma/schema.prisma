@@ -1,0 +1,676 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Role {
+  SYSTEM_ADMIN
+  STUDENT
+  TEACHER
+  SCHOOL_ADMIN
+  PARENT
+  CLASS_ADMIN
+}
+
+enum UserStatus {
+  PENDING_SETUP
+  ACTIVE
+  DISABLED
+  PASSWORD_CHANGE_REQUIRED
+}
+
+/// Shared archive lifecycle for School / SchoolYear / Class.
+enum ArchivableStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum HomeworkStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TodoStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ExamStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum EventVisibility {
+  PERSONAL
+  CLASS
+  SCHOOL
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+/// Extensible per-user feature flags (spec §11). Only AI_ACCESS is actually
+/// wired up end-to-end in V1 (Phase 14) — the others are reserved so future
+/// phases don't need a schema migration just to add a new gated feature.
+enum PermissionKey {
+  AI_ACCESS
+  CLOUD_ACCESS
+  CLASS_ACCESS
+  FILE_UPLOAD
+  ADVANCED_FEATURES
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_DISABLED
+  USER_ENABLED
+  USER_ASSIGNED_TO_CLASS
+  USER_REMOVED_FROM_CLASS
+  AI_ACCESS_GRANTED
+  AI_ACCESS_REVOKED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_CHANGE_REQUIRED
+  FILE_UPLOADED
+  FILE_DELETED
+  AI_REQUEST
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiActionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum NotificationType {
+  HOMEWORK_CREATED
+  EXAM_UPCOMING
+  EVENT_REMINDER
+  ANNOUNCEMENT
+  CLOUD_ACTIVITY
+  AI_HINT
+}
+
+// ============================================================
+// Identity & org structure
+// ============================================================
+
+/// The exactly-one-SYSTEM_ADMIN invariant (spec §6) is enforced by a
+/// partial unique index added by hand in the initial migration
+/// (`UNIQUE (role) WHERE role = 'SYSTEM_ADMIN'`) — Prisma's schema
+/// language has no partial-index syntax, so this can't be declared here.
+/// See docs/database.md.
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  firstName    String
+  lastName     String
+  displayName  String
+  /// Null while status = PENDING_SETUP (no password chosen yet).
+  passwordHash String?
+  role         Role       @default(STUDENT)
+  status       UserStatus @default(PENDING_SETUP)
+
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id])
+
+  createdByUserId String?
+  createdBy       User?   @relation("UserCreatedBy", fields: [createdByUserId], references: [id])
+  createdUsers    User[]  @relation("UserCreatedBy")
+
+  /// Private cloud usage. Updated exclusively via an atomic conditional
+  /// UPDATE ... WHERE storageUsedBytes + $size <= $quota in the upload
+  /// service — never derived from a separate SUM query as the limit check
+  /// itself, to close the parallel-upload race (spec §33, test #12).
+  storageUsedBytes BigInt @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classMemberships   ClassMembership[]
+  sessions           Session[]
+  setupTokens        SetupToken[]
+  permissions        UserPermission[]    @relation("UserPermissions")
+  permissionsGranted UserPermission[]    @relation("PermissionGrantedBy")
+  homeworks          Homework[]          @relation("HomeworkAuthor")
+  todos              Todo[]
+  exams              Exam[]              @relation("ExamAuthor")
+  events             Event[]             @relation("EventAuthor")
+  announcements      ClassAnnouncement[] @relation("AnnouncementAuthor")
+  folders            Folder[]
+  ownedFiles         File[]              @relation("FileOwner")
+  uploadedFiles      File[]              @relation("FileUploadedBy")
+  aiConversations    AIConversation[]
+  aiUsageLogs        AIUsageLog[]
+  notifications      Notification[]
+  auditLogsAsActor   AuditLog[]          @relation("AuditActor")
+  auditLogsAsTarget  AuditLog[]          @relation("AuditTarget")
+
+  @@index([schoolId])
+  @@index([role])
+}
+
+model School {
+  id     String           @id @default(cuid())
+  name   String
+  status ArchivableStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  schoolYears SchoolYear[]
+  classes     Class[]
+  subjects    Subject[]
+  events      Event[]      @relation("SchoolEvent")
+}
+
+model SchoolYear {
+  id        String           @id @default(cuid())
+  /// e.g. "2026/27"
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    ArchivableStatus @default(ACTIVE)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classes Class[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+/// `slug` is globally unique (not scoped per school/year) because the fixed
+/// route is `/klasse/[classSlug]` with no school/year segment (spec §4).
+/// See docs/database.md.
+model Class {
+  id     String           @id @default(cuid())
+  name   String
+  slug   String           @unique
+  status ArchivableStatus @default(ACTIVE)
+
+  schoolId     String
+  school       School     @relation(fields: [schoolId], references: [id])
+  schoolYearId String
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id])
+
+  /// Class cloud usage — same atomic-update pattern as User.storageUsedBytes.
+  storageUsedBytes BigInt @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships      ClassMembership[]
+  homeworks        Homework[]
+  exams            Exam[]
+  events           Event[]             @relation("ClassEvent")
+  announcements    ClassAnnouncement[]
+  timetableEntries TimetableEntry[]
+  folders          Folder[]
+  files            File[]
+
+  @@index([schoolId])
+  @@index([schoolYearId])
+}
+
+/// "Currently active membership must be unique per (user, class)" is
+/// enforced by a hand-added partial unique index
+/// (`UNIQUE (userId, classId) WHERE leftAt IS NULL`) — see docs/database.md.
+/// `leftAt` (rather than a hard delete) preserves history per spec §17.
+model ClassMembership {
+  id String @id @default(cuid())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+
+  @@index([userId])
+  @@index([classId])
+}
+
+model Subject {
+  id   String @id @default(cuid())
+  name String
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  timetableEntries TimetableEntry[]
+  homeworks        Homework[]
+  todos            Todo[]
+  exams            Exam[]
+  files            File[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+/// `teacherName` is free text, not a User relation — there's no TEACHER
+/// account management in V1 yet (spec §21: "Architektur für spätere
+/// Admin-/Lehrer-Verwaltung vorbereiten").
+model TimetableEntry {
+  id          String    @id @default(cuid())
+  dayOfWeek   DayOfWeek
+  startTime   DateTime  @db.Time
+  endTime     DateTime  @db.Time
+  room        String?
+  teacherName String?
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  subjectId String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId, dayOfWeek])
+  @@index([subjectId])
+}
+
+/// `classId` null = private to the author (spec §19, /home/hausaufgaben).
+/// `classId` set = shared class homework, visible to the whole class
+/// (spec §28, /klasse/[slug]/aufgaben). One model covers both surfaces
+/// rather than duplicating Homework/ClassHomework.
+model Homework {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  priority    Priority       @default(MEDIUM)
+  status      HomeworkStatus @default(OPEN)
+
+  authorId String
+  author   User   @relation("HomeworkAuthor", fields: [authorId], references: [id])
+
+  classId String?
+  class   Class?  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  todos       Todo[]
+  attachments File[]
+
+  @@index([authorId, dueDate])
+  @@index([classId, dueDate])
+}
+
+model Todo {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    Priority   @default(MEDIUM)
+  category    String?
+  status      TodoStatus @default(OPEN)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+
+  homeworkId String?
+  homework   Homework? @relation(fields: [homeworkId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([homeworkId])
+}
+
+/// Always class-scoped (spec §23 lists "Klasse" as a required field) — every
+/// member of the class sees it via their ClassMembership.
+model Exam {
+  id          String     @id @default(cuid())
+  title       String
+  date        DateTime
+  topics      String?
+  description String?
+  status      ExamStatus @default(SCHEDULED)
+
+  authorId String
+  author   User   @relation("ExamAuthor", fields: [authorId], references: [id])
+
+  classId String
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([classId, date])
+  @@index([authorId])
+}
+
+/// `classId` set when visibility = CLASS, `schoolId` set when
+/// visibility = SCHOOL; both null when visibility = PERSONAL (spec §22).
+model Event {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime
+  location    String?
+  category    String?
+  visibility  EventVisibility @default(PERSONAL)
+
+  authorId String
+  author   User   @relation("EventAuthor", fields: [authorId], references: [id])
+
+  classId String?
+  class   Class?  @relation("ClassEvent", fields: [classId], references: [id], onDelete: Cascade)
+
+  schoolId String?
+  school   School? @relation("SchoolEvent", fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([authorId])
+  @@index([classId, startsAt])
+  @@index([schoolId, startsAt])
+}
+
+model ClassAnnouncement {
+  id        String    @id @default(cuid())
+  title     String
+  content   String
+  expiresAt DateTime?
+
+  classId  String
+  class    Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments File[]
+
+  @@index([classId])
+}
+
+// ============================================================
+// Cloud storage
+// ============================================================
+
+model Folder {
+  id   String @id @default(cuid())
+  name String
+
+  ownerUserId  String?
+  ownerUser    User?   @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerClassId String?
+  ownerClass   Class?  @relation(fields: [ownerClassId], references: [id], onDelete: Cascade)
+
+  parentFolderId String?
+  parentFolder   Folder?  @relation("FolderChildren", fields: [parentFolderId], references: [id], onDelete: Restrict)
+  childFolders   Folder[] @relation("FolderChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  files File[]
+
+  @@index([ownerUserId])
+  @@index([ownerClassId])
+  @@index([parentFolderId])
+}
+
+/// Exactly one of ownerUserId / ownerClassId must be set. Enforced in
+/// lib/storage (the only writer), not by a DB constraint — see
+/// docs/database.md for why.
+model File {
+  id               String @id @default(cuid())
+  originalFilename String
+  mimeType         String
+  sizeBytes        BigInt
+  storageKey       String @unique
+
+  ownerUserId  String?
+  ownerUser    User?   @relation("FileOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerClassId String?
+  ownerClass   Class?  @relation(fields: [ownerClassId], references: [id], onDelete: Cascade)
+
+  uploadedByUserId String
+  uploadedBy       User   @relation("FileUploadedBy", fields: [uploadedByUserId], references: [id])
+
+  folderId String?
+  folder   Folder? @relation(fields: [folderId], references: [id], onDelete: Restrict)
+
+  subjectId String?
+  subject   Subject? @relation(fields: [subjectId], references: [id])
+
+  homeworkId String?
+  homework   Homework? @relation(fields: [homeworkId], references: [id], onDelete: SetNull)
+
+  announcementId String?
+  announcement   ClassAnnouncement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerUserId])
+  @@index([ownerClassId])
+  @@index([folderId])
+  @@index([uploadedByUserId])
+}
+
+// ============================================================
+// AI
+// ============================================================
+
+model AIConversation {
+  id    String  @id @default(cuid())
+  title String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AIMessage[]
+
+  @@index([userId])
+}
+
+/// `proposedAction` / `actionStatus` back the confirm-before-mutate flow
+/// (spec §37, test #19): the AI proposes a homework/todo/event via a
+/// message, and only a CONFIRMED action actually creates the record.
+model AIMessage {
+  id      String        @id @default(cuid())
+  role    AiMessageRole
+  content String
+
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  proposedAction Json?           @db.JsonB
+  actionStatus   AiActionStatus?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+}
+
+model AIUsageLog {
+  id               String  @id @default(cuid())
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  estimatedCostEur Decimal @db.Decimal(10, 4)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Global AI on/off (spec §35 GLOBAL_AI_ENABLED) must be runtime-toggleable
+/// by an admin, so — unlike ANTHROPIC_MODEL/AI_MONTHLY_BUDGET_EUR, which
+/// stay env-driven — it has to live in the database, not an env var.
+/// Singleton row convention: application code always reads/writes
+/// id = "singleton"; not enforced by the DB beyond the primary key itself,
+/// since this table only ever has one writer path (lib/ai).
+model SystemSettings {
+  id                String  @id @default("singleton")
+  aiGloballyEnabled Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
+model Notification {
+  id    String           @id @default(cuid())
+  type  NotificationType
+  title String
+  body  String
+  link  String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ============================================================
+// Auth
+// ============================================================
+
+/// Opaque bearer token pattern: the raw token lives only in the user's
+/// cookie, and `tokenHash` (SHA-256) is what's stored here — never the raw
+/// token itself. Deleting a row is a real, instant revocation, which is
+/// what lets a disabled account's sessions be invalidated immediately
+/// (spec §9, tests #13/#14).
+model Session {
+  id        String @id @default(cuid())
+  tokenHash String @unique
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  userAgent String?
+  ipAddress String?
+
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+}
+
+/// Same opaque-token-hash pattern as Session. `usedAt` enforces one-time use
+/// (spec §8, test #15); `expiresAt` enforces the time limit (test #16).
+/// Not unique per user — re-issuing a link creates a new row rather than
+/// mutating the old one, preserving history.
+model SetupToken {
+  id        String @id @default(cuid())
+  tokenHash String @unique
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================================================
+// Permissions & audit
+// ============================================================
+
+model UserPermission {
+  id  String        @id @default(cuid())
+  key PermissionKey
+
+  userId String
+  user   User   @relation("UserPermissions", fields: [userId], references: [id], onDelete: Cascade)
+
+  grantedByUserId String?
+  grantedBy       User?   @relation("PermissionGrantedBy", fields: [grantedByUserId], references: [id])
+
+  grantedAt DateTime @default(now())
+
+  @@unique([userId, key])
+}
+
+/// `metadata` is structured context for the admin log view — never
+/// passwords, tokens, API keys, or other secrets (spec §52, test #20).
+model AuditLog {
+  id     String      @id @default(cuid())
+  action AuditAction
+
+  actorUserId String?
+  actor       User?   @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  targetUserId String?
+  target       User?   @relation("AuditTarget", fields: [targetUserId], references: [id])
+
+  metadata Json? @db.JsonB
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([targetUserId])
+}
