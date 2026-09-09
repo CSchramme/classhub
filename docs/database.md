@@ -10,6 +10,16 @@ hence the `dotenv/config` import there).
 Full model definitions live in [`prisma/schema.prisma`](../prisma/schema.prisma).
 This doc covers the decisions that aren't obvious from reading it.
 
+The initial migration (`prisma/migrations/20260909205540_init`) was generated
+offline via `prisma migrate diff --from-empty --to-schema prisma/schema.prisma
+--script` (no live database needed for generation), hand-edited to add the two
+partial unique indexes below, then applied and verified end-to-end against a
+real Postgres instance (`npx prisma dev`) — including empirically confirming
+both partial unique indexes actually reject the second insert they're meant
+to reject, and that leaving + rejoining a class is still allowed. Run
+`npm run db:migrate` (dev) or `npx prisma migrate deploy` (prod/server) to
+apply it against your own database.
+
 ## Partial unique indexes (hand-added, not in schema.prisma)
 
 Prisma's schema language has no syntax for a partial (`WHERE ...`) unique
