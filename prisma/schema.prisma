@@ -71,11 +71,10 @@ enum DayOfWeek {
   FRIDAY
 }
 
-/// Extensible per-user feature flags (spec §11). Only AI_ACCESS is actually
-/// wired up end-to-end in V1 (Phase 14) — the others are reserved so future
-/// phases don't need a schema migration just to add a new gated feature.
+/// Extensible per-user feature flags (spec §11). None are wired up
+/// end-to-end yet — reserved so a future gated feature doesn't need a
+/// schema migration just to add its own flag.
 enum PermissionKey {
-  AI_ACCESS
   CLOUD_ACCESS
   CLASS_ACCESS
   FILE_UPLOAD
@@ -88,24 +87,10 @@ enum AuditAction {
   USER_ENABLED
   USER_ASSIGNED_TO_CLASS
   USER_REMOVED_FROM_CLASS
-  AI_ACCESS_GRANTED
-  AI_ACCESS_REVOKED
   PASSWORD_RESET_REQUESTED
   PASSWORD_CHANGE_REQUIRED
   FILE_UPLOADED
   FILE_DELETED
-  AI_REQUEST
-}
-
-enum AiMessageRole {
-  USER
-  ASSISTANT
-}
-
-enum AiActionStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
 }
 
 enum NotificationType {
@@ -114,7 +99,6 @@ enum NotificationType {
   EVENT_REMINDER
   ANNOUNCEMENT
   CLOUD_ACTIVITY
-  AI_HINT
 }
 
 // ============================================================
@@ -166,8 +150,6 @@ model User {
   folders            Folder[]
   ownedFiles         File[]              @relation("FileOwner")
   uploadedFiles      File[]              @relation("FileUploadedBy")
-  aiConversations    AIConversation[]
-  aiUsageLogs        AIUsageLog[]
   notifications      Notification[]
   auditLogsAsActor   AuditLog[]          @relation("AuditActor")
   auditLogsAsTarget  AuditLog[]          @relation("AuditTarget")
@@ -501,72 +483,6 @@ model File {
   @@index([ownerClassId])
   @@index([folderId])
   @@index([uploadedByUserId])
-}
-
-// ============================================================
-// AI
-// ============================================================
-
-model AIConversation {
-  id    String  @id @default(cuid())
-  title String?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  messages AIMessage[]
-
-  @@index([userId])
-}
-
-/// `proposedAction` / `actionStatus` back the confirm-before-mutate flow
-/// (spec §37, test #19): the AI proposes a homework/todo/event via a
-/// message, and only a CONFIRMED action actually creates the record.
-model AIMessage {
-  id      String        @id @default(cuid())
-  role    AiMessageRole
-  content String
-
-  conversationId String
-  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  proposedAction Json?           @db.JsonB
-  actionStatus   AiActionStatus?
-
-  createdAt DateTime @default(now())
-
-  @@index([conversationId])
-}
-
-model AIUsageLog {
-  id               String  @id @default(cuid())
-  model            String
-  inputTokens      Int
-  outputTokens     Int
-  estimatedCostEur Decimal @db.Decimal(10, 4)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime @default(now())
-
-  @@index([userId, createdAt])
-}
-
-/// Global AI on/off (spec §35 GLOBAL_AI_ENABLED) must be runtime-toggleable
-/// by an admin, so — unlike ANTHROPIC_MODEL/AI_MONTHLY_BUDGET_EUR, which
-/// stay env-driven — it has to live in the database, not an env var.
-/// Singleton row convention: application code always reads/writes
-/// id = "singleton"; not enforced by the DB beyond the primary key itself,
-/// since this table only ever has one writer path (lib/ai).
-model SystemSettings {
-  id                String  @id @default("singleton")
-  aiGloballyEnabled Boolean @default(false)
-
-  updatedAt DateTime @updatedAt
 }
 
 // ============================================================

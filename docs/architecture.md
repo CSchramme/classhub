@@ -3,7 +3,7 @@
 Status: implemented. A single-page orientation; the specific "why" behind
 individual decisions lives closer to the code — `docs/database.md` for
 schema/data decisions, `docs/security.md` for the security review,
-`docs/ai.md` for the AI assistant, `docs/deployment.md` for running it.
+`docs/deployment.md` for running it.
 
 ## Stack
 
@@ -14,7 +14,6 @@ schema/data decisions, `docs/security.md` for the security review,
 | Database       | PostgreSQL via Prisma 7 (`prisma-client` generator + `@prisma/adapter-pg`)        |
 | Auth           | Custom session layer (opaque bearer tokens, DB-backed) — not NextAuth             |
 | Object storage | S3-compatible (`@aws-sdk/client-s3`), server-proxied uploads                      |
-| AI             | Anthropic SDK, tool-based confirm-before-mutate (see `docs/ai.md`)                |
 | Validation     | Zod at every server boundary                                                      |
 | Testing        | Vitest — component tests (jsdom) and real-Postgres integration tests side by side |
 
@@ -77,13 +76,13 @@ requests can both pass the read before either writes. All three are
 enforced by a real database constraint or an atomic conditional update,
 and all three have integration tests proving it under genuine
 concurrency (`lib/auth/register.test.ts`, `lib/admin/users.test.ts`,
-`lib/auth/setup-token.test.ts`, `lib/ai/confirm.test.ts`):
+`lib/auth/setup-token.test.ts`):
 
 1. **Exactly one `SYSTEM_ADMIN` ever** — a partial unique index
    (`User_one_system_admin`), not a `count() === 0` check.
-2. **One-time token/action consumption** (setup tokens, AI proposed
-   actions) — an atomic `updateMany` with the "still valid" condition in
-   the `WHERE` clause, not a `findUnique` followed by a separate `update`.
+2. **One-time token consumption** (setup tokens) — an atomic `updateMany`
+   with the "still valid" condition in the `WHERE` clause, not a
+   `findUnique` followed by a separate `update`.
 3. **Storage quota** — a single conditional `UPDATE ... WHERE used + size
 <= quota` in the same transaction as the file insert, not a `SUM`
    query compared against the limit before inserting.

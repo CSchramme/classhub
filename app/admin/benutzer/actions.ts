@@ -8,7 +8,6 @@ import {
   enableUser,
   requirePasswordChange,
   resetUserSetup,
-  setAiAccess,
   assignUserToClass,
 } from "@/lib/admin/users";
 import { createUserSchema } from "@/lib/validation/user";
@@ -30,7 +29,6 @@ export async function createUserAction(
     role: formData.get("role"),
     schoolId: formData.get("schoolId"),
     classId: formData.get("classId"),
-    aiAccess: formData.get("aiAccess") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Ungültige Eingabe." };
@@ -52,12 +50,6 @@ export async function toggleUserEnabledAction(userId: string, disabled: boolean)
   } else {
     await disableUser(userId, admin.id);
   }
-  revalidatePath("/admin/benutzer");
-}
-
-export async function toggleAiAccessAction(userId: string, granted: boolean) {
-  const admin = await requireSystemAdmin();
-  await setAiAccess(userId, admin.id, !granted);
   revalidatePath("/admin/benutzer");
 }
 

@@ -3,7 +3,6 @@
 import { useActionState, useState } from "react";
 import {
   toggleUserEnabledAction,
-  toggleAiAccessAction,
   requirePasswordChangeAction,
   resetSetupAction,
 } from "./actions";
@@ -14,11 +13,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export function UserRowActions({
   userId,
   disabled,
-  aiAccess,
 }: {
   userId: string;
   disabled: boolean;
-  aiAccess: boolean;
 }) {
   const [resetState, resetAction, resetPending] = useActionState(
     resetSetupAction,
@@ -32,11 +29,6 @@ export function UserRowActions({
         <form action={toggleUserEnabledAction.bind(null, userId, disabled)}>
           <Button type="submit" size="sm" variant="outline">
             {disabled ? "Aktivieren" : "Deaktivieren"}
-          </Button>
-        </form>
-        <form action={toggleAiAccessAction.bind(null, userId, aiAccess)}>
-          <Button type="submit" size="sm" variant="outline">
-            {aiAccess ? "KI entziehen" : "KI freigeben"}
           </Button>
         </form>
         <form action={requirePasswordChangeAction.bind(null, userId)}>

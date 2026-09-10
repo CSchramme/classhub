@@ -33,7 +33,6 @@ export default async function AdminUserDetailPage({
 
   const { user, auditLog } = detail;
   const disabled = user.status === "DISABLED";
-  const aiAccess = user.permissions.some((p) => p.key === "AI_ACCESS");
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
@@ -53,7 +52,7 @@ export default async function AdminUserDetailPage({
           <div>
             <CardTitle className="text-base">Profil</CardTitle>
           </div>
-          <UserRowActions userId={user.id} disabled={disabled} aiAccess={aiAccess} />
+          <UserRowActions userId={user.id} disabled={disabled} />
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-1.5">
@@ -63,7 +62,6 @@ export default async function AdminUserDetailPage({
             <Badge variant={disabled ? "outline" : "secondary"}>
               {USER_STATUS_LABELS[user.status]}
             </Badge>
-            {aiAccess && <Badge variant="secondary">KI-Zugriff</Badge>}
           </div>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">Vor-/Nachname</dt>

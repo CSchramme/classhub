@@ -27,5 +27,4 @@ export const createUserSchema = z.object({
     .string()
     .optional()
     .transform((v) => (v ? v : undefined)),
-  aiAccess: z.coerce.boolean().optional().default(false),
 });

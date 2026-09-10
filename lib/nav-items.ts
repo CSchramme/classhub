@@ -8,7 +8,6 @@ import {
   BookOpen,
   Cloud,
   Users,
-  Sparkles,
   Settings,
   ShieldCheck,
   type LucideIcon,
@@ -31,7 +30,6 @@ export const SIDEBAR_ITEMS: NavItem[] = [
   { label: "Fächer", href: "/home/faecher", icon: BookOpen },
   { label: "Cloud", href: "/cloud", icon: Cloud },
   { label: "Klasse", href: "/klasse", icon: Users },
-  { label: "KI", href: "/ki", icon: Sparkles },
   { label: "Einstellungen", href: "/einstellungen", icon: Settings },
 ];
 
@@ -47,5 +45,4 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = [
   { label: "Aufgaben", href: "/home/hausaufgaben", icon: ClipboardList },
   { label: "Termine", href: "/home/termine", icon: CalendarDays },
   { label: "Cloud", href: "/cloud", icon: Cloud },
-  { label: "KI", href: "/ki", icon: Sparkles },
 ];

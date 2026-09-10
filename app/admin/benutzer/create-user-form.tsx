@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -153,13 +152,6 @@ export function CreateUserForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Checkbox id="aiAccess" name="aiAccess" />
-          <Label htmlFor="aiAccess" className="font-normal">
-            KI-Zugriff freigeben
-          </Label>
         </div>
 
         <Button type="submit" disabled={isPending} className="self-start">

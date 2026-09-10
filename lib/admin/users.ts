@@ -44,13 +44,6 @@ export async function createUser(
     });
   }
 
-  if (input.aiAccess) {
-    await db.userPermission.create({
-      data: { userId: user.id, key: "AI_ACCESS", grantedByUserId: actorUserId },
-    });
-    await writeAuditLog("AI_ACCESS_GRANTED", { actorUserId, targetUserId: user.id });
-  }
-
   await writeAuditLog("USER_CREATED", {
     actorUserId,
     targetUserId: user.id,
@@ -100,20 +93,6 @@ export async function resetUserSetup(
   await destroyAllSessionsForUser(userId);
   await writeAuditLog("PASSWORD_RESET_REQUESTED", { actorUserId, targetUserId: userId });
   return issueSetupToken(userId);
-}
-
-export async function setAiAccess(userId: string, actorUserId: string, granted: boolean) {
-  if (granted) {
-    await db.userPermission.upsert({
-      where: { userId_key: { userId, key: "AI_ACCESS" } },
-      create: { userId, key: "AI_ACCESS", grantedByUserId: actorUserId },
-      update: {},
-    });
-    await writeAuditLog("AI_ACCESS_GRANTED", { actorUserId, targetUserId: userId });
-  } else {
-    await db.userPermission.deleteMany({ where: { userId, key: "AI_ACCESS" } });
-    await writeAuditLog("AI_ACCESS_REVOKED", { actorUserId, targetUserId: userId });
-  }
 }
 
 export async function removeUserFromClass(

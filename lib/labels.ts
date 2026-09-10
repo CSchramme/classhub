@@ -17,11 +17,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   USER_ENABLED: "Benutzer aktiviert",
   USER_ASSIGNED_TO_CLASS: "Klasse zugewiesen",
   USER_REMOVED_FROM_CLASS: "Aus Klasse entfernt",
-  AI_ACCESS_GRANTED: "KI-Zugriff gewährt",
-  AI_ACCESS_REVOKED: "KI-Zugriff entzogen",
   PASSWORD_RESET_REQUESTED: "Passwort-Reset angefordert",
   PASSWORD_CHANGE_REQUIRED: "Passwortwechsel erzwungen",
   FILE_UPLOADED: "Datei hochgeladen",
   FILE_DELETED: "Datei gelöscht",
-  AI_REQUEST: "KI-Anfrage",
 };

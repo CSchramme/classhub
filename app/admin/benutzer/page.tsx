@@ -65,14 +65,12 @@ export default async function AdminUsersPage() {
                   <TableHead>Rolle</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Klasse</TableHead>
-                  <TableHead>KI</TableHead>
                   <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user) => {
                   const disabled = user.status === "DISABLED";
-                  const aiAccess = user.permissions.some((p) => p.key === "AI_ACCESS");
                   return (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
@@ -108,13 +106,8 @@ export default async function AdminUsersPage() {
                           <AssignClassForm userId={user.id} classes={classOptions} />
                         </div>
                       </TableCell>
-                      <TableCell>{aiAccess ? "Ja" : "Nein"}</TableCell>
                       <TableCell className="text-right">
-                        <UserRowActions
-                          userId={user.id}
-                          disabled={disabled}
-                          aiAccess={aiAccess}
-                        />
+                        <UserRowActions userId={user.id} disabled={disabled} />
                       </TableCell>
                     </TableRow>
                   );

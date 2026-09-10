@@ -141,8 +141,8 @@ documented deployment path.
 ### Rate limiting: not everywhere, deliberately
 
 Covered: login (ip+email and email-only buckets), registration (IP,
-bootstrap-only anyway), AI messages (per-user hourly cap plus a monthly
-€ budget). Not covered, each judged low-risk enough not to need it yet:
+bootstrap-only anyway). Not covered, each judged low-risk enough not to
+need it yet:
 
 - **Setup-token consumption** — the token is a 256-bit random value
   (`randomBytes(32)`); online brute-forcing it is computationally
@@ -150,9 +150,9 @@ bootstrap-only anyway), AI messages (per-user hourly cap plus a monthly
 - **Password change** (`changePassword`'s current-password check) —
   requires an already-authenticated session to reach; an attacker with a
   hijacked session already has full account access regardless.
-- **Admin mutations** (user/class/school creation, AI toggle, etc.) — all
-  gated by `requireSystemAdmin()`; exploitation already requires a
-  compromised admin account.
+- **Admin mutations** (user/class/school creation, etc.) — all gated by
+  `requireSystemAdmin()`; exploitation already requires a compromised
+  admin account.
 - **Content-creation actions** (todos, homework, exams, events, uploads)
   — bounded by Zod length caps and storage quotas per request, but not
   per time window. A malicious class member could script rapid content

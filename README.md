@@ -3,9 +3,9 @@
 „Alles für deine Schule. An einem Ort.“
 
 ClassHub is a production-grade school platform: dashboard, homework, to-dos,
-timetable, events, exams, subjects, private/class cloud storage, an
-AI assistant, admin/user management, and audit logging — built as one
-Next.js app on top of PostgreSQL.
+timetable, events, exams, subjects, private/class cloud storage,
+admin/user management, and audit logging — built as one Next.js app on
+top of PostgreSQL.
 
 Status: early build, in progress phase by phase. See [docs/routes.md](./docs/routes.md)
 for what's actually implemented vs. planned.
@@ -13,7 +13,7 @@ for what's actually implemented vs. planned.
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui ·
-Prisma · PostgreSQL · S3-compatible object storage · Anthropic API
+Prisma · PostgreSQL · S3-compatible object storage
 
 See [docs/architecture.md](./docs/architecture.md), [docs/security.md](./docs/security.md).
 
@@ -46,5 +46,4 @@ npm run typecheck    # TypeScript, no emit
 npm run test          # Vitest
 npm run db:generate    # generate the Prisma client
 npm run db:migrate     # run Prisma migrations (dev)
-npm run db:seed        # seed the database (dev only, never fake prod data)
 ```

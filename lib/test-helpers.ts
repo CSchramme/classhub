@@ -54,9 +54,9 @@ export async function createTestUser(
   });
 }
 
-/** User, Session, SetupToken, ClassMembership, UserPermission, and
- * AIConversation all cascade from User (onDelete: Cascade in the schema),
- * so deleting the user is enough cleanup for anything created off it. */
+/** User, Session, SetupToken, ClassMembership, and UserPermission all
+ * cascade from User (onDelete: Cascade in the schema), so deleting the
+ * user is enough cleanup for anything created off it. */
 export async function deleteTestUser(userId: string) {
   await db.user.delete({ where: { id: userId } }).catch(() => {});
 }

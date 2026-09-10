@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  Users,
-  School,
-  CalendarRange,
-  ShieldCheck,
-  HardDrive,
-  Sparkles,
-} from "lucide-react";
+import { Users, School, CalendarRange, ShieldCheck, HardDrive } from "lucide-react";
 import { db } from "@/lib/db";
 import {
   Card,
@@ -23,12 +16,11 @@ function formatBytes(bytes: bigint) {
 }
 
 export default async function AdminDashboardPage() {
-  const [userCount, schoolCount, classCount, aiUserCount, storageAgg, recentAudit] =
-    await Promise.all([
+  const [userCount, schoolCount, classCount, storageAgg, recentAudit] = await Promise.all(
+    [
       db.user.count(),
       db.school.count(),
       db.class.count(),
-      db.userPermission.count({ where: { key: "AI_ACCESS" } }),
       db.user.aggregate({ _sum: { storageUsedBytes: true } }),
       db.auditLog.findMany({
         orderBy: { createdAt: "desc" },
@@ -38,13 +30,13 @@ export default async function AdminDashboardPage() {
           target: { select: { displayName: true } },
         },
       }),
-    ]);
+    ],
+  );
 
   const cards = [
     { label: "Benutzer", value: userCount, icon: Users, href: "/admin/benutzer" },
     { label: "Schulen", value: schoolCount, icon: School, href: "/admin/schulen" },
     { label: "Klassen", value: classCount, icon: CalendarRange, href: "/admin/klassen" },
-    { label: "KI-Zugriff", value: aiUserCount, icon: Sparkles, href: "/admin/ki" },
     {
       label: "Speicher (privat)",
       value: formatBytes(storageAgg._sum.storageUsedBytes ?? BigInt(0)),
@@ -63,7 +55,7 @@ export default async function AdminDashboardPage() {
         <p className="text-muted-foreground">Überblick über ClassHub.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

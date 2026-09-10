@@ -73,14 +73,6 @@ The fixed route is `/klasse/[classSlug]` with no school or year segment
 needs to generate/validate a globally-unique slug (e.g. suggest a suffix on
 collision) rather than just deriving one from the name.
 
-## `SystemSettings` singleton
-
-One row, `id = "singleton"`, holds `aiGloballyEnabled` (spec §35). This has
-to be a database row rather than an env var because the admin UI toggles it
-at runtime (spec §51) — env vars would need a redeploy. It's a convention,
-not a DB-enforced singleton: the app always reads/writes `id = "singleton"`
-via upsert, and nothing else writes this table.
-
 ## `Invitation` (spec §13) folded into `SetupToken`
 
 The spec's entity list names both `Invitation` and a setup-link flow, but
@@ -99,27 +91,6 @@ prospective Teacher/Parent before they have a `User` row).
 `/klasse/[slug]/aufgaben`). One model instead of two avoids duplicating
 almost-identical fields and lets a class's shared homework and a student's
 own homework list share the same query/filtering code.
-
-## AI confirm-before-mutate (`lib/ai/`)
-
-The model never writes data directly. Calling `propose_todo`/`propose_event`
-(the only two tools it's given — see `lib/ai/tools.ts`) just captures the
-call on an `AIMessage` row (`proposedAction` + `actionStatus: PENDING`).
-Confirming is an atomic claim — `updateMany` with `actionStatus: "PENDING"`
-in the WHERE clause, same one-time-use pattern as `consumeSetupToken`
-(`lib/auth/setup-token.ts`) — so two concurrent confirm/cancel calls for the
-same message can't both proceed. The claim only runs after the proposal has
-been re-validated against the same Zod schemas the real create forms use
-(`createTodoSchema`/`createEventSchema`): the model's tool call is untrusted
-input, same as any form submission.
-
-Access requires two independent things: `SystemSettings.aiGloballyEnabled`
-(admin toggle, `/admin/ki`) and a per-user `UserPermission` grant (key
-`AI_ACCESS`, already wired up from `/admin/benutzer`). No `SYSTEM_ADMIN`
-bypass, unlike `requireClassMember` — every AI call costs real money via
-`AIUsageLog.estimatedCostEur`, itself a best-effort estimate
-(`lib/ai/pricing.ts`) since there's no API to read back exact spend per
-request.
 
 ## Notifications (`lib/notifications/`)
 
@@ -147,7 +118,3 @@ heuristic — same user, type, and title within the last 48h — rather than a
 clean "already have a notification for exam X" lookup. Good enough since
 titles embed the specific exam/event name, and cheap to verify: two
 consecutive scans over the same window produce the second one's `count: 0`.
-
-`AI_HINT` has no trigger built yet — reserved in the enum for a future,
-more speculative "AI proactively notices something" feature, same as
-`TEACHER`/`SCHOOL_ADMIN` sit unused in the `Role` enum for now.

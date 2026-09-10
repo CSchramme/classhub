@@ -18,8 +18,6 @@ use one.
   encryption: session cookies only get the `secure` flag when
   `NODE_ENV=production` (`lib/auth/session.ts`), and a `secure` cookie is
   silently dropped by browsers over plain HTTP, breaking login.
-- An Anthropic API key, only if you want the AI assistant working
-  (`/admin/ki` still lets you toggle the feature off entirely without one)
 
 ## First-time setup
 
@@ -32,9 +30,9 @@ cp .env.example .env
 
 Fill in `.env` — at minimum `DATABASE_URL`, a real generated `AUTH_SECRET`
 (`openssl rand -base64 32`), and `NEXT_PUBLIC_APP_URL` set to your real
-public URL. Everything else (`ANTHROPIC_API_KEY`, `STORAGE_*`,
-`CRON_SECRET`) can stay empty until you're ready for that subsystem — see
-`lib/env.ts`, each is independently optional at boot.
+public URL. Everything else (`STORAGE_*`, `CRON_SECRET`) can stay empty
+until you're ready for that subsystem — see `lib/env.ts`, each is
+independently optional at boot.
 
 If you're using this repo's `docker-compose.yml` for Postgres/MinIO:
 
@@ -113,10 +111,9 @@ Neither is handled by the app. At minimum:
 See `.env.example` for the full list with comments. The ones that most
 affect production behavior specifically:
 
-| Variable                | Effect                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------- |
-| `NODE_ENV=production`   | Set automatically by `next start`; makes session cookies `secure` (HTTPS-only)         |
-| `AUTH_SECRET`           | Must be a real random value — the placeholder in `.env.example` is intentionally blank |
-| `NEXT_PUBLIC_APP_URL`   | Used to build absolute links (e.g. setup-link emails/URLs shown in the admin UI)       |
-| `AI_MONTHLY_BUDGET_EUR` | A single number applied to every user, not configurable per-user                       |
-| `CRON_SECRET`           | Required for the reminder cron endpoint to accept any request at all                   |
+| Variable              | Effect                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| `NODE_ENV=production` | Set automatically by `next start`; makes session cookies `secure` (HTTPS-only)         |
+| `AUTH_SECRET`         | Must be a real random value — the placeholder in `.env.example` is intentionally blank |
+| `NEXT_PUBLIC_APP_URL` | Used to build absolute links (e.g. setup-link emails/URLs shown in the admin UI)       |
+| `CRON_SECRET`         | Required for the reminder cron endpoint to accept any request at all                   |

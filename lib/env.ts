@@ -5,14 +5,14 @@ import { z } from "zod";
  * component — it reads secrets. Fails fast on boot instead of surfacing
  * confusing errors deep inside request handling later.
  *
- * Vars for subsystems not built yet (storage, AI) are optional here so
+ * Vars for subsystems not built yet (storage) are optional here so
  * `npm run dev` isn't blocked before those phases land; each subsystem's
  * own server code re-checks its own required vars before doing anything
- * with them (see lib/storage, lib/ai once they exist).
+ * with them (see lib/storage).
  */
 
 // `.env` commonly leaves not-yet-needed vars present but empty (e.g.
-// `ANTHROPIC_API_KEY=`) rather than omitted — Next.js loads that as `""`,
+// `STORAGE_ENDPOINT=`) rather than omitted — Next.js loads that as `""`,
 // which zod's `.optional()` does NOT treat as "absent". Coerce "" to
 // undefined first so these are genuinely optional either way.
 const optionalString = () =>
@@ -40,10 +40,6 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(32, "AUTH_SECRET must be at least 32 characters"),
 
   NEXT_PUBLIC_APP_URL: z.string().url("NEXT_PUBLIC_APP_URL must be a valid URL"),
-
-  ANTHROPIC_API_KEY: optionalString(),
-  ANTHROPIC_MODEL: z.string().min(1).default("claude-sonnet-5"),
-  AI_MONTHLY_BUDGET_EUR: z.coerce.number().positive().default(5),
 
   STORAGE_ENDPOINT: optionalUrl(),
   STORAGE_REGION: z.string().min(1).default("us-east-1"),
