@@ -42,8 +42,12 @@ export function ProfileForm({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">E-Mail</Label>
-        <Input id="email" value={email} disabled />
+        <Label>E-Mail</Label>
+        {/* Not an <Input>: there's no email-change/re-verification flow,
+            so this is purely informational and never submitted. */}
+        <p className="rounded-lg border border-input bg-input/50 px-2.5 py-1.5 text-sm text-muted-foreground">
+          {email}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
