@@ -38,3 +38,22 @@ export function toActionError(error: unknown): ActionError {
     message: "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
   };
 }
+
+/** Route Handlers (unlike Server Actions) need a real HTTP status, not just
+ * a code/message pair — used by app/api/cloud/* so far. */
+export function statusForErrorCode(code: AppErrorCode): number {
+  switch (code) {
+    case "UNAUTHORIZED":
+      return 401;
+    case "FORBIDDEN":
+      return 403;
+    case "NOT_FOUND":
+      return 404;
+    case "RATE_LIMITED":
+      return 429;
+    case "INVALID_INPUT":
+      return 400;
+    case "INTERNAL_ERROR":
+      return 500;
+  }
+}
