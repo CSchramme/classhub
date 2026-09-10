@@ -99,3 +99,24 @@ prospective Teacher/Parent before they have a `User` row).
 `/klasse/[slug]/aufgaben`). One model instead of two avoids duplicating
 almost-identical fields and lets a class's shared homework and a student's
 own homework list share the same query/filtering code.
+
+## AI confirm-before-mutate (`lib/ai/`)
+
+The model never writes data directly. Calling `propose_todo`/`propose_event`
+(the only two tools it's given — see `lib/ai/tools.ts`) just captures the
+call on an `AIMessage` row (`proposedAction` + `actionStatus: PENDING`).
+Confirming is an atomic claim — `updateMany` with `actionStatus: "PENDING"`
+in the WHERE clause, same one-time-use pattern as `consumeSetupToken`
+(`lib/auth/setup-token.ts`) — so two concurrent confirm/cancel calls for the
+same message can't both proceed. The claim only runs after the proposal has
+been re-validated against the same Zod schemas the real create forms use
+(`createTodoSchema`/`createEventSchema`): the model's tool call is untrusted
+input, same as any form submission.
+
+Access requires two independent things: `SystemSettings.aiGloballyEnabled`
+(admin toggle, `/admin/ki`) and a per-user `UserPermission` grant (key
+`AI_ACCESS`, already wired up from `/admin/benutzer`). No `SYSTEM_ADMIN`
+bypass, unlike `requireClassMember` — every AI call costs real money via
+`AIUsageLog.estimatedCostEur`, itself a best-effort estimate
+(`lib/ai/pricing.ts`) since there's no API to read back exact spend per
+request.
