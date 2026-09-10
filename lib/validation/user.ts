@@ -4,6 +4,15 @@ import { z } from "zod";
 // CLASS_ADMIN are reserved in the schema (spec §10) but not usable yet.
 export const assignableRoleSchema = z.enum(["STUDENT", "SYSTEM_ADMIN"]);
 
+/** Self-service profile edit — deliberately excludes email/role/school,
+ * which carry authorization or identity implications and aren't editable
+ * here (spec has no email-change/re-verification flow). */
+export const updateProfileSchema = z.object({
+  firstName: z.string().trim().min(1, "Vorname ist erforderlich.").max(100),
+  lastName: z.string().trim().min(1, "Nachname ist erforderlich.").max(100),
+  displayName: z.string().trim().min(1, "Anzeigename ist erforderlich.").max(100),
+});
+
 export const createUserSchema = z.object({
   firstName: z.string().trim().min(1, "Vorname ist erforderlich.").max(100),
   lastName: z.string().trim().min(1, "Nachname ist erforderlich.").max(100),
