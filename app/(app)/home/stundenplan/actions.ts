@@ -40,6 +40,6 @@ export async function createTimetableEntryAction(
 export async function deleteTimetableEntryAction(entryId: string, classId: string) {
   await requireUser();
   await requireClassMember(classId);
-  await deleteTimetableEntry(entryId);
+  await deleteTimetableEntry(entryId, classId);
   revalidatePath("/home/stundenplan");
 }

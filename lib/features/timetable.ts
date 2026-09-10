@@ -32,9 +32,12 @@ export async function createTimetableEntry(
   });
 }
 
-export async function deleteTimetableEntry(entryId: string) {
-  const entry = await db.timetableEntry.findUnique({
-    where: { id: entryId },
+/** classId is required here, not just entryId: without scoping the lookup
+ * to the caller's own (already membership-checked) class, any class
+ * member could delete any other class's timetable entry by id alone. */
+export async function deleteTimetableEntry(entryId: string, classId: string) {
+  const entry = await db.timetableEntry.findFirst({
+    where: { id: entryId, classId },
     select: { id: true },
   });
   if (!entry) {

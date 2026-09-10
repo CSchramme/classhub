@@ -6,6 +6,7 @@ import { consumeSetupToken } from "@/lib/auth/setup-token";
 import { createSession } from "@/lib/auth/session";
 import { setupPasswordSchema } from "@/lib/validation/auth";
 import { toActionError } from "@/lib/errors";
+import { getClientIp } from "@/lib/auth/request-ip";
 import type { FormActionState } from "@/lib/action-state";
 
 export async function setupPasswordAction(
@@ -26,7 +27,7 @@ export async function setupPasswordAction(
     const headerList = await headers();
     await createSession(userId, {
       userAgent: headerList.get("user-agent"),
-      ipAddress: headerList.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      ipAddress: getClientIp(headerList),
     });
   } catch (error) {
     return { error: toActionError(error).message };

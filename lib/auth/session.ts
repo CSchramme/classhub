@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import { env } from "@/lib/env";
 import { generateRawToken, hashToken } from "@/lib/auth/tokens";
 import type { Role, UserStatus } from "../../generated/prisma/client";
 
@@ -50,7 +51,7 @@ export async function createSession(
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, rawToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: expiresAt,

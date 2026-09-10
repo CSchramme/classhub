@@ -7,6 +7,7 @@ import { createSession } from "@/lib/auth/session";
 import { registerSchema } from "@/lib/validation/auth";
 import { toActionError } from "@/lib/errors";
 import { isRateLimited, recordAttempt } from "@/lib/auth/rate-limit";
+import { getClientIp } from "@/lib/auth/request-ip";
 import type { FormActionState } from "@/lib/action-state";
 
 export async function registerAction(
@@ -14,7 +15,7 @@ export async function registerAction(
   formData: FormData,
 ): Promise<FormActionState> {
   const headerList = await headers();
-  const ip = headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(headerList);
 
   if (isRateLimited(`register:${ip}`)) {
     return { error: "Zu viele Versuche. Bitte warte einen Moment." };
