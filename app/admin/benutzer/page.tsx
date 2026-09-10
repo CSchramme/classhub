@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { listUsers } from "@/lib/admin/users";
 import { listSchools } from "@/lib/admin/schools";
 import { listClasses } from "@/lib/admin/classes";
+import { USER_STATUS_LABELS } from "@/lib/labels";
 import {
   Card,
   CardContent,
@@ -21,19 +23,12 @@ import { CreateUserForm } from "./create-user-form";
 import { UserRowActions } from "./user-row-actions";
 import { AssignClassForm } from "./assign-class-form";
 
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "Aktiv",
-  PENDING_SETUP: "Einrichtung ausstehend",
-  DISABLED: "Deaktiviert",
-  PASSWORD_CHANGE_REQUIRED: "Passwortwechsel nötig",
-};
-
 export default async function AdminUsersPage() {
-  const [users, schools, classes] = await Promise.all([
-    listUsers(),
-    listSchools(),
-    listClasses(),
-  ]);
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const users = await listUsers();
+  const schools = await listSchools();
+  const classes = await listClasses();
 
   const classOptions = classes.map((c) => ({ id: c.id, name: c.name, school: c.school }));
 
@@ -80,7 +75,14 @@ export default async function AdminUsersPage() {
                   const aiAccess = user.permissions.some((p) => p.key === "AI_ACCESS");
                   return (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.displayName}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/admin/benutzer/${user.id}`}
+                          className="hover:underline"
+                        >
+                          {user.displayName}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {user.email}
                       </TableCell>
@@ -93,7 +95,7 @@ export default async function AdminUsersPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={disabled ? "outline" : "secondary"}>
-                          {STATUS_LABELS[user.status]}
+                          {USER_STATUS_LABELS[user.status]}
                         </Badge>
                       </TableCell>
                       <TableCell>

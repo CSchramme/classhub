@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireSystemAdmin } from "@/lib/auth/authorization";
 import { createClass, archiveClass, reactivateClass } from "@/lib/admin/classes";
+import { removeUserFromClass } from "@/lib/admin/users";
 import { createClassSchema } from "@/lib/validation/school";
 import { toActionError } from "@/lib/errors";
 import type { FormActionState } from "@/lib/action-state";
@@ -41,4 +42,10 @@ export async function toggleClassArchiveAction(classId: string, archived: boolea
     await archiveClass(classId);
   }
   revalidatePath("/admin/klassen");
+}
+
+export async function removeUserFromClassAction(userId: string, classId: string) {
+  const admin = await requireSystemAdmin();
+  await removeUserFromClass(userId, classId, admin.id);
+  revalidatePath(`/admin/klassen/${classId}`);
 }

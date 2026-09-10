@@ -116,6 +116,28 @@ export async function setAiAccess(userId: string, actorUserId: string, granted: 
   }
 }
 
+export async function removeUserFromClass(
+  userId: string,
+  classId: string,
+  actorUserId: string,
+) {
+  const membership = await db.classMembership.findFirst({
+    where: { userId, classId, leftAt: null },
+  });
+  if (!membership) {
+    throw new AppError("NOT_FOUND", "Mitgliedschaft nicht gefunden.");
+  }
+  await db.classMembership.update({
+    where: { id: membership.id },
+    data: { leftAt: new Date() },
+  });
+  await writeAuditLog("USER_REMOVED_FROM_CLASS", {
+    actorUserId,
+    targetUserId: userId,
+    metadata: { classId },
+  });
+}
+
 export async function assignUserToClass(
   userId: string,
   classId: string,
@@ -153,4 +175,41 @@ export async function listUsers() {
       },
     },
   });
+}
+
+/** Unlike listUsers, includes past (leftAt set) memberships too — a
+ * detail view is exactly where that history is useful, not just active
+ * status (spec §17: leftAt preserves history rather than hard-deleting). */
+export async function getUserDetail(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: {
+      school: { select: { id: true, name: true } },
+      createdBy: { select: { id: true, displayName: true } },
+      permissions: { select: { key: true } },
+      classMemberships: {
+        orderBy: { joinedAt: "desc" },
+        select: {
+          joinedAt: true,
+          leftAt: true,
+          class: { select: { id: true, name: true, slug: true } },
+        },
+      },
+    },
+  });
+  if (!user) return null;
+
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const auditLog = await db.auditLog.findMany({
+    where: { OR: [{ actorUserId: userId }, { targetUserId: userId }] },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    include: {
+      actor: { select: { displayName: true } },
+      target: { select: { displayName: true } },
+    },
+  });
+
+  return { user, auditLog };
 }

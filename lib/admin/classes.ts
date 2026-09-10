@@ -44,3 +44,32 @@ export async function listClasses() {
     },
   });
 }
+
+/** Includes past (leftAt set) memberships too, unlike getClassMembers
+ * (lib/classes.ts) — a detail view is where that roster history matters. */
+export async function getClassDetail(classId: string) {
+  const klass = await db.class.findUnique({
+    where: { id: classId },
+    include: {
+      school: { select: { id: true, name: true } },
+      schoolYear: { select: { id: true, name: true } },
+    },
+  });
+  if (!klass) return null;
+
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const memberships = await db.classMembership.findMany({
+    where: { classId },
+    orderBy: [{ leftAt: "asc" }, { joinedAt: "desc" }],
+    select: {
+      joinedAt: true,
+      leftAt: true,
+      user: { select: { id: true, displayName: true, email: true, role: true } },
+    },
+  });
+  const homeworkCount = await db.homework.count({ where: { classId } });
+  const examCount = await db.exam.count({ where: { classId } });
+
+  return { class: klass, memberships, homeworkCount, examCount };
+}

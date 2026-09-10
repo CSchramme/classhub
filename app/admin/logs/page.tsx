@@ -17,22 +17,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { AUDIT_ACTION_LABELS } from "@/lib/labels";
 import type { AuditAction } from "@/generated/prisma/client";
-
-const ACTION_LABELS: Record<AuditAction, string> = {
-  USER_CREATED: "Benutzer erstellt",
-  USER_DISABLED: "Benutzer deaktiviert",
-  USER_ENABLED: "Benutzer aktiviert",
-  USER_ASSIGNED_TO_CLASS: "Klasse zugewiesen",
-  USER_REMOVED_FROM_CLASS: "Aus Klasse entfernt",
-  AI_ACCESS_GRANTED: "KI-Zugriff gewährt",
-  AI_ACCESS_REVOKED: "KI-Zugriff entzogen",
-  PASSWORD_RESET_REQUESTED: "Passwort-Reset angefordert",
-  PASSWORD_CHANGE_REQUIRED: "Passwortwechsel erzwungen",
-  FILE_UPLOADED: "Datei hochgeladen",
-  FILE_DELETED: "Datei gelöscht",
-  AI_REQUEST: "KI-Anfrage",
-};
 
 const fmtDateTime = (date: Date) =>
   new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(
@@ -40,7 +26,7 @@ const fmtDateTime = (date: Date) =>
   );
 
 function isAuditAction(value: string): value is AuditAction {
-  return value in ACTION_LABELS;
+  return value in AUDIT_ACTION_LABELS;
 }
 
 export default async function AdminLogsPage({
@@ -75,7 +61,7 @@ export default async function AdminLogsPage({
             className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <option value="">Alle</option>
-            {Object.entries(ACTION_LABELS).map(([value, label]) => (
+            {Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -117,7 +103,7 @@ export default async function AdminLogsPage({
                       {fmtDateTime(log.createdAt)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{ACTION_LABELS[log.action]}</Badge>
+                      <Badge variant="outline">{AUDIT_ACTION_LABELS[log.action]}</Badge>
                     </TableCell>
                     <TableCell>{log.actor?.displayName ?? "System"}</TableCell>
                     <TableCell>{log.target?.displayName ?? "–"}</TableCell>

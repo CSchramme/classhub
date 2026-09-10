@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listClasses } from "@/lib/admin/classes";
 import { listSchoolYears } from "@/lib/admin/school-years";
 import { listSchools } from "@/lib/admin/schools";
@@ -22,11 +23,11 @@ import { ArchiveToggleForm } from "@/components/admin/archive-toggle-form";
 import { CreateClassForm } from "./create-class-form";
 
 export default async function AdminClassesPage() {
-  const [classes, schoolYears, schools] = await Promise.all([
-    listClasses(),
-    listSchoolYears(),
-    listSchools(),
-  ]);
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const classes = await listClasses();
+  const schoolYears = await listSchoolYears();
+  const schools = await listSchools();
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
@@ -70,7 +71,14 @@ export default async function AdminClassesPage() {
                   const archived = klass.status === "ARCHIVED";
                   return (
                     <TableRow key={klass.id}>
-                      <TableCell className="font-medium">{klass.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/admin/klassen/${klass.id}`}
+                          className="hover:underline"
+                        >
+                          {klass.name}
+                        </Link>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {klass.slug}
                       </TableCell>
