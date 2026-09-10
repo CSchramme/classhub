@@ -1,3 +1,4 @@
+import "dotenv/config";
 import "@testing-library/jest-dom/vitest";
 
 // jsdom doesn't implement matchMedia; next-themes (system theme detection)
