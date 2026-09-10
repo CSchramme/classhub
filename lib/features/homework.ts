@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { createNotificationsForUsers } from "@/lib/notifications";
 import type { z } from "zod";
 import type {
   createHomeworkSchema,
@@ -41,7 +42,7 @@ export async function createHomework(
   authorId: string,
   input: z.infer<typeof createHomeworkSchema>,
 ) {
-  return db.homework.create({
+  const homework = await db.homework.create({
     data: {
       authorId,
       title: input.title,
@@ -52,6 +53,24 @@ export async function createHomework(
       classId: input.classId,
     },
   });
+
+  if (homework.classId) {
+    const members = await db.classMembership.findMany({
+      where: { classId: homework.classId, leftAt: null, userId: { not: authorId } },
+      select: { userId: true },
+    });
+    await createNotificationsForUsers(
+      members.map((m) => m.userId),
+      {
+        type: "HOMEWORK_CREATED",
+        title: "Neue Hausaufgabe",
+        body: homework.title,
+        link: "/home/hausaufgaben",
+      },
+    );
+  }
+
+  return homework;
 }
 
 async function requireHomeworkAuthor(homeworkId: string, userId: string) {

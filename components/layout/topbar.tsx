@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LogOut, Settings, UserRound } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -13,18 +14,25 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/lib/auth/logout-action";
+import { listNotifications, getUnreadCount } from "@/lib/notifications";
 import type { SessionUser } from "@/lib/auth/session";
 
 function initials(user: SessionUser) {
   return `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
 }
 
-export function Topbar({ user }: { user: SessionUser }) {
+export async function Topbar({ user }: { user: SessionUser }) {
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const notifications = await listNotifications(user.id, 8);
+  const unreadCount = await getUnreadCount(user.id);
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-border px-4 md:px-6">
       <div className="font-semibold md:hidden">ClassHub</div>
       <div className="hidden md:block" />
       <div className="flex items-center gap-2">
+        <NotificationBell unreadCount={unreadCount} notifications={notifications} />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger

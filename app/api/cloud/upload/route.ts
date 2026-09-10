@@ -4,6 +4,8 @@ import { uploadFile } from "@/lib/storage";
 import { MAX_UPLOAD_SIZE_BYTES } from "@/lib/storage/constants";
 import { toActionError, statusForErrorCode } from "@/lib/errors";
 import { writeAuditLog } from "@/lib/audit";
+import { db } from "@/lib/db";
+import { createNotificationsForUsers } from "@/lib/notifications";
 import type { StorageOwner } from "@/lib/storage/types";
 
 /** Server-proxied upload (spec §33): this route validates size/MIME and
@@ -79,6 +81,22 @@ export async function POST(request: NextRequest) {
         sizeBytes: created.sizeBytes.toString(),
       },
     });
+
+    if (owner.type === "class") {
+      const members = await db.classMembership.findMany({
+        where: { classId: owner.id, leftAt: null, userId: { not: userId } },
+        select: { userId: true },
+      });
+      await createNotificationsForUsers(
+        members.map((m) => m.userId),
+        {
+          type: "CLOUD_ACTIVITY",
+          title: "Neue Datei in der Klassen-Cloud",
+          body: created.originalFilename,
+          link: "/cloud/klasse",
+        },
+      );
+    }
 
     return NextResponse.json({ ok: true, fileId: created.id });
   } catch (error) {

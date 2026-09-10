@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { createNotificationsForUsers } from "@/lib/notifications";
 
 export async function getClassBySlug(slug: string) {
   return db.class.findUnique({
@@ -46,7 +47,7 @@ export async function createAnnouncement(input: {
   expiresAt?: Date;
   authorId: string;
 }) {
-  return db.classAnnouncement.create({
+  const announcement = await db.classAnnouncement.create({
     data: {
       classId: input.classId,
       title: input.title,
@@ -55,4 +56,26 @@ export async function createAnnouncement(input: {
       authorId: input.authorId,
     },
   });
+
+  // Sequential — concurrent queries are unreliable against the local dev
+  // database (see lib/storage/index.ts for the first occurrence of this).
+  const klass = await db.class.findUnique({
+    where: { id: input.classId },
+    select: { slug: true },
+  });
+  const members = await db.classMembership.findMany({
+    where: { classId: input.classId, leftAt: null, userId: { not: input.authorId } },
+    select: { userId: true },
+  });
+  await createNotificationsForUsers(
+    members.map((m) => m.userId),
+    {
+      type: "ANNOUNCEMENT",
+      title: "Neue Ankündigung",
+      body: announcement.title,
+      link: klass ? `/klasse/${klass.slug}/uebersicht` : "/klasse",
+    },
+  );
+
+  return announcement;
 }

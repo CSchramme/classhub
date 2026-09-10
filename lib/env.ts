@@ -51,6 +51,12 @@ const envSchema = z.object({
   STORAGE_SECRET_KEY: optionalString(),
   STORAGE_BUCKET: z.string().min(1).default("classhub"),
   STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+
+  // Shared-secret auth for app/api/cron/notifications — the deployer's own
+  // crontab (or platform scheduler) calls it periodically; there's no
+  // in-app scheduler. Optional so `npm run dev` isn't blocked before it's
+  // configured, same reasoning as the AI/storage vars above.
+  CRON_SECRET: optionalString(),
 });
 
 function loadEnv() {

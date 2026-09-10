@@ -120,3 +120,34 @@ bypass, unlike `requireClassMember` — every AI call costs real money via
 `AIUsageLog.estimatedCostEur`, itself a best-effort estimate
 (`lib/ai/pricing.ts`) since there's no API to read back exact spend per
 request.
+
+## Notifications (`lib/notifications/`)
+
+`NotificationType` splits into two triggering shapes that both write the
+same `Notification` row, just from different places:
+
+- **Event-triggered** (`HOMEWORK_CREATED`, `ANNOUNCEMENT`, `CLOUD_ACTIVITY`):
+  created synchronously, right where the triggering action happens —
+  `createHomework` (`lib/features/homework.ts`), `createAnnouncement`
+  (`lib/classes.ts`), and the class-cloud branch of
+  `app/api/cloud/upload/route.ts`. Each fans out to every other active
+  member of the class (never the actor themselves) via
+  `createNotificationsForUsers`.
+- **Time-triggered** (`EXAM_UPCOMING`, `EVENT_REMINDER`): there's no
+  in-app scheduler, so `lib/notifications/reminders.ts` only runs when
+  something calls `app/api/cron/notifications` — meant to be the
+  deployer's own crontab (or host scheduler) hitting it periodically with
+  `CRON_SECRET` as a bearer token. It scans for exams/events starting
+  within the next 24h and notifies the relevant recipients (class members,
+  or every active user at the school for a SCHOOL-visibility event).
+
+Because `Notification` has no foreign key back to the exam/event that
+triggered it (just a generic `link`), the reminder scan's dedup check is a
+heuristic — same user, type, and title within the last 48h — rather than a
+clean "already have a notification for exam X" lookup. Good enough since
+titles embed the specific exam/event name, and cheap to verify: two
+consecutive scans over the same window produce the second one's `count: 0`.
+
+`AI_HINT` has no trigger built yet — reserved in the enum for a future,
+more speculative "AI proactively notices something" feature, same as
+`TEACHER`/`SCHOOL_ADMIN` sit unused in the `Role` enum for now.
