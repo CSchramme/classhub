@@ -11,7 +11,6 @@ const FEATURES = [
   "Prüfungen",
   "Klassenbereich",
   "Private & Klassen-Cloud",
-  "KI-Assistent",
 ] as const;
 
 export default function Home() {
@@ -35,8 +34,8 @@ export default function Home() {
             An einem Ort.
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            ClassHub bündelt Dashboard, Aufgaben, Stundenplan, Termine, Cloud und einen
-            KI-Assistenten in einer modernen, sicheren Plattform.
+            ClassHub bündelt Dashboard, Aufgaben, Stundenplan, Termine und Cloud in einer
+            modernen, sicheren Plattform.
           </p>
         </div>
 
