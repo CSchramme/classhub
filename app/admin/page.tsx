@@ -81,9 +81,14 @@ export default async function AdminDashboardPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Letzte Audit-Events</CardTitle>
-          <CardDescription>Die letzten 10 protokollierten Ereignisse.</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle className="text-base">Letzte Audit-Events</CardTitle>
+            <CardDescription>Die letzten 10 protokollierten Ereignisse.</CardDescription>
+          </div>
+          <Link href="/admin/logs" className="text-sm text-primary hover:underline">
+            Alle anzeigen
+          </Link>
         </CardHeader>
         <CardContent>
           {recentAudit.length === 0 ? (
